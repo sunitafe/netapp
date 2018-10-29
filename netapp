@@ -1,0 +1,146 @@
+#!/usr/bin/python
+
+"""
+netapp
+v0.1
+This program manages an SQLite3 database of network device data
+and pings devices to check if they are online.
+"""
+
+# Import modules
+import sys, sqlite3, subprocess, ipaddress, re
+
+
+# Declare variables
+error_msg       = "Usage: python3 netapp [help|list|new|ping|pingall]"
+error_msg_new   = "Usage: python3 netapp new [type] [hostname] [ipaddress]"
+error_msg_ping  = "Usage: python3 netapp ping [hostname|ipaddress]"
+
+
+def formatData(row):
+	t =  "ID: " + str(row[0]) + "\n"
+	t += "Device Type: " + row[1] + "\n"
+	t += "Hostname: " + row[2] + "\n"
+	t += "IP Address: " + row[3] + "\n"
+	return t
+
+  
+def listTargets():
+	conn = sqlite3.connect('netapp.db')
+	c    = conn.cursor()
+	sql  = "SELECT * FROM targets"
+	c.execute(sql)
+	data = c.fetchall()
+	for row in data:
+		result = formatData(row)
+		print(result)
+
+
+def addNewTarget(type, hostname, ipaddress):
+        conn = sqlite3.connect('netapp.db')
+        c    = conn.cursor()
+        sql  = "INSERT INTO targets (type, hostname, ipaddress) VALUES "
+        sql += "('" + type + "', '" + hostname + "', '" + ipaddress + "');"
+        c.execute(sql)
+        conn.commit()
+
+
+def doPing(target):
+         response = subprocess.call(["ping", "-c 1", target])
+         if response == 0:
+             msg = target + " is up"
+         else:
+             msg = target + " is down"
+         return msg
+
+
+def checkDB(target, type):
+
+    if type == 'ipaddress':
+        sql = "SELECT ipaddress FROM targets WHERE ipaddress='" + target + "'";
+    elif type == 'hostname':
+        sql = "SELECT ipaddress FROM targets WHERE hostname='" + target + "'";
+
+    conn         = sqlite3.connect('netapp.db')
+    c            = conn.cursor()
+    c.execute(sql)
+    data         = c.fetchone()
+
+    if data != None:    
+        return data[0]
+    else:
+        return 0
+
+
+def pingTarget(target):
+
+    pattern = re.compile("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}")
+    looks_like_an_ipaddress = pattern.match(target)
+
+    if looks_like_an_ipaddress:
+
+        try:
+            ipaddress.ip_address(target)
+            check = checkDB(target, 'ipaddress')
+            if check != 0:
+                msg = doPing(check)
+            else:
+                msg = "IP address is not in database"
+
+        except ValueError:
+            msg = "IP address is invalid"
+
+    else:
+
+        check = checkDB(target, 'hostname')
+        if check != 0:
+            msg = doPing(check)
+        else:
+            msg = "Hostname is not in database"
+         
+    return msg
+
+
+# Main function controls flow of program
+def main(argv):
+
+   if not argv[1] in ['help', 'list', 'new', 'ping', 'pingall']:
+      print(error_msg)
+      sys.exit(2)
+
+   if argv[1] == 'help':
+      print(error_msg)
+      sys.exit(2)
+
+   elif argv[1] == 'list':
+      listTargets()
+
+   elif argv[1] == 'new':
+      if len(sys.argv) >= 5:
+         type       = argv[2]
+         hostname   = argv[3]
+         ipaddress  = argv[4]
+         addNewTarget(type, hostname, ipaddress)
+      else:
+         print(error_msg_new)
+         
+   elif argv[1] == 'ping':
+      if len(sys.argv) >= 3:
+         target  = argv[2]
+         response = pingTarget(target)
+         print(response)
+      else:
+         print(error_msg_ping)
+
+
+
+if __name__ == "__main__":
+
+   # Check whether subcommand has been provided
+   # If yes, run main function using the subcommand
+   if len(sys.argv) >= 2:
+      main(sys.argv)
+
+   # If no, run main function with 'help' subcommand
+   else:
+      main('help')
