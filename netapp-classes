@@ -1,0 +1,163 @@
+import subprocess, requests
+
+# Defining the Network Class with network devices
+class Network:
+	def __init__(self, NetworkID, NetMask):
+		self.NetworkID = NetworkID
+		self.NetMask = NetMask
+		self.Targets = {}
+		self.DefaultGateway = ""
+		self.DNSServers = {}
+		self.DHCPServers = {}
+		self.ADServers = {}
+
+# Function for adding and removing Targets		
+	def addTarget(self, label, Target):
+		self.Targets.update( { label : Target } )
+
+	def removeTarget(self, label):
+		self.Targets.pop(label)
+
+# Function for Listing all current Target labels		
+	def listTargets(self):	
+		targetlist = []
+		#for key in Target.keys():
+		for key in self.Targets.keys():
+			#list(Targets[key])
+			targetlist.append(self.Targets[key])
+		return targetlist
+
+# Function for adding and removing a Default Gateway			
+	def addDefaultGateway(self, DefaultGateway):
+		self.DefaultGateway = DefaultGateway
+
+	def remDefaultGateway(self, DefaultGateway):
+		self.DefaultGateway = ""
+
+# Function for adding and removing DNS Servers			
+	def addDNSServers(self, Preference, DNSServers):
+		self.DNSServers.update( { Preference : DNSServers } )
+
+	def removeDNSServers(self, Preference):
+		self.DNSServers.pop(Preference)
+
+# Function for adding and removing DHCP Servers	
+	def addDHCPServers(self, Preference, DHCPServers):
+		self.DHCPServers.update( { Preference : DHCPServers } )
+
+	def removeDHCPServers(self, Preference):
+		self.DHCPServers.pop(Preference)
+
+# Function for adding and removing AD Servers	
+	def addADServers(self, Preference, ADServers):
+		self.ADServers.update( { Preference : ADServers } )
+
+	def removeADServers(self, Preference):
+		self.ADServers.pop(Preference)
+
+# Defining NetTarget Class		
+class NetTarget:
+	def __init__(self, ID, Type):
+		self.ID = ID
+		self.Type = Type
+		self.Hostname = ""
+		self.Description = ""
+
+# Function that returns the value the Hostname		
+	def getHostname(self):
+		return self.Hostname
+
+# Function for adding or changing the Hostname
+	def setHostname(self, Hostname):
+		self.Hostname = Hostname
+
+# Function that returns the value the Description		
+	def getDescription(self):
+		return self.Description
+
+# Function for adding or changing the Description		
+	def setDescription(self, Description):
+		self.Description = Description
+
+# Function that returns the value the Type	
+	def getType(self):
+		return self.Type
+
+# Function for adding or changing the Description		
+	def setType(self):
+		self.Type = Type
+
+# Defining the NetServer (A child/sub class of NetTarget)
+class NetServer(NetTarget):
+	def __init__(self, ID):
+		super().__init__(ID, "server")
+		self.IPType = "dhcp"
+		self.IP = ""
+		self.MAC = ""
+		self.OS = ""
+
+# Function that returns the value the IP Type	
+	def getIPType(self):
+		return self.IPType
+
+# Function for adding or changing the IP Type				
+	def setIPType(self, IPType):
+		self.IPType = IPType
+
+# Function that returns the value the IP Address	
+	def getIPAddress(self):
+		return self.IP
+
+# Function for adding or changing the IP Address		
+	def setIPAddress(self, IPAddress):
+		self.IP = IPAddress
+
+# Function that returns the value the MAC Address		
+	def getMACAddress(self):
+		return self.MAC
+
+# Function for adding or changing the MAC Address		
+	def setMACAddress(self, MAC):
+		self.MAC = MAC
+
+# Function that returns the value the Operating System			
+	def getOS(self):
+		return self.OS
+
+# Function for adding or changing the Operating System	
+	def setOS(self, OS):
+		self.OS = OS
+
+# Ping Function to test an IP Address
+	def ping(self, IPAddress):
+# Ping command count option as function of OS
+		param = '-n' if system_name().lower()=='windows' else '-c'
+# Building the command and peforming the ping
+		command = ['ping', param, '1', IPAddress]
+		response = system_call(command) == 0
+# Create up or down response depending on result    
+		if response == 0:
+			msg = IPAddress + "is up"
+		else:
+			msg = IPAddress + " is down"
+# Output of the response   
+		return msg
+
+# Defining NetWebsite Class	
+class NetWebsite(NetTarget):
+	def __init__(self, ID):
+		super().__init__(ID, "website")
+		self.Address = ""
+		self.WebsiteType = ""
+
+# Ping Function to test a website		
+	def ping(self, Address):
+		r = requests.get(Address)
+		response = r.status_code
+# Check for HTTP status code 200 		
+		if response == 200:
+			msg = Address + " is up " 
+		else:
+			msg = Address + " is down "
+# Output of website status	
+		return msg + "with a status code of " + str(response)
